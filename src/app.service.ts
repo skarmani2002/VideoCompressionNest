@@ -24,6 +24,29 @@ export class AppService {
   getHello(): string {
     return 'Hello World!';
   }
+ /* async testingVideo(data){
+    console.log("[Debug:]- Downloading S3..");
+      let spilitFileName = data.fileKey.split(".");
+      let fileName = spilitFileName[0];
+      const outputPath = `${__dirname}/assets/modify${fileName}.mp4`;
+      let serverFileName = `${spilitFileName[0]}.mp4`;
+      let waterMark = `${__dirname}/assets/watermark.png`;
+   
+      const tempFileName = `${__dirname}/assets/${data.fileKey}`;
+     
+           let resp =  ffmpeg()
+          .input(tempFileName)
+          .videoCodec('libx264')
+          .FPSOutput(60)
+          .withOutputFormat('mp4')
+          .output(outputPath)
+          .on("end", function() {
+              console.log("Processing finished successfully");
+             
+              
+              
+          })
+  }*/
 
   async videoCompression(data:any){
     try{
@@ -31,22 +54,18 @@ export class AppService {
       let fileKey = data.fileKey;
       if(fileKey!=""){
         let spilitFileName = fileKey.split(".");
-        if(spilitFileName[1] == 'webm'){
+        if(spilitFileName[1] == 'webm' || 0==0){
+          let serverFileName = `${spilitFileName[0]}.mp4`;
           let downloadImageS3 = await this.downloadCompress(data);
           console.log("Download Status",downloadImageS3);
-          return  {code:'200', status:'ok', msg:"Please wait - Compression under process. .."} 
-
-         
+          return  {code:'200', status:'ok', msg:"Please wait - Compression under process. ..",fileKey:serverFileName} 
         }
       }
-
       return {code:'E23455', status:false, msg:"File name is missing"}
-      
     }catch(ex){
       console.log("Exception ",ex);
       return {code:404, status:false, msg:"Something went wrong"}
     } 
-
   }
  
   async downloadCompress(data:any){
@@ -96,14 +115,31 @@ export class AppService {
             this.BUCKET = process.env.BUCKET_NAME
         
             let params = {
-              Bucket: this.BUCKET,
-              Key: serverFileName,
-              Body: fileContent        //got buffer by reading file path
+              Bucket  : this.BUCKET,
+              Key     : serverFileName,
+              Body    : fileContent,
+              ACL     : 'public-read'         
             };
             console.log("[Debug:]- Params ",params);
             
             this.S3.putObject(params, function(err, data) {
               console.log(err, data);
+              fs.unlink(outputPath, (err => {
+                if (err) console.log(err);
+                else {
+                  console.log("\nDeleted Symbolic Link: symlinkToFile");
+                
+                  
+                }
+              }));
+              fs.unlink(tempFileName, (err => {
+                if (err) console.log(err);
+                else {
+                  console.log("\nDeleted Symbolic Link: symlinkToFile");
+                
+                  
+                }
+              }));
             });
           })
             .run();
@@ -155,25 +191,36 @@ export class AppService {
                 this.BUCKET = process.env.BUCKET_NAME
             
                 let params = {
-                  Bucket: this.BUCKET,
-                  Key: serverFileName,
-                  Body: fileContent        //got buffer by reading file path
+                  Bucket  : this.BUCKET,
+                  Key     : serverFileName,
+                  Body    : fileContent,        //got buffer by reading file path
+                  ACL     : 'public-read'  
                 };
                 console.log("[Debug:]- Params ",params);
                 
                 this.S3.putObject(params, function(err, data) {
-                  console.log(err, data);
+                  fs.unlink(outputPath, (err => {
+                    if (err) console.log(err);
+                    else {
+                      console.log("\nDeleted Symbolic Link: symlinkToFile");
+                    
+                      
+                    }
+                  }));
+                  fs.unlink(tempFileName, (err => {
+                    if (err) console.log(err);
+                    else {
+                      console.log("\nDeleted Symbolic Link: symlinkToFile");
+                    
+                      
+                    }
+                  }));
                 });
               
               
             })
             .run();
-       
-
         }
-       
-     
-        
       });
     }catch(ex){
       console.log("Exception Download s3",ex);
@@ -181,90 +228,5 @@ export class AppService {
     }
   }
   
-  
-  /******** FFMPEG */
-  otherFfmpegConverter(inputFile:any,OutputFile:any,fileName:any,waterMark:any){
-  try{  
-    console.log(inputFile,OutputFile,waterMark,fileName);
-      let resp =  ffmpeg()
-      .input(inputFile)
-      .input(waterMark)
-      .complexFilter(
-          'overlay=main_w-overlay_w-10:main_h-overlay_h-10'
-         /* [
-
-              {
-                 // filter: 'overlay',
-                 // options: { x: 30, y: 200 },
-                  //inputs: 0, outputs: '1'
-      
-              },
-              {
-                  filter: 'main_w',
-                  // options: { x: 30, y: 200 },
-                   //inputs: 0, outputs: '1'
-       
-               },
-              overlay=main_w-overlay_w-10:main_h-overlay_h-10'
-      ]*/)
-      
-      .videoCodec('libx264')
-      .FPSOutput(25)
-      //.size('1080x1080')
-      //.inputFPS(25)
-     // .inputOptions('-crf 28')
-      .withOutputFormat('mp4')
-      .output(OutputFile)
-      .on("end", function() {
-          console.log("Processing finished successfully");
-          const fileContent = fs.readFileSync(OutputFile);
-          var params = {
-            Bucket: this.BUCKET,
-            Key: fileName,
-            Body: fileContent        //got buffer by reading file path
-          };
-          this.S3.putObject(params, function(err, data) {
-            console.log(err, data);
-          });
-        })
-        .run();
-      return true;
-
-  }catch(ex){
-      console.log("Exception in FFMPEG",ex);
-      return false;
-  }
-}
-
-    businessFFmpegConverter(inputFile:any,OutputFile:any,fileName:any){
-    try{  
-        let resp =  ffmpeg()
-        .input(inputFile)
-        .complexFilter('overlay=main_w-overlay_w-10:main_h-overlay_h-10')
-        
-        .videoCodec('libx264')
-        .FPSOutput(25)
-        .withOutputFormat('mp4')
-        .output(OutputFile)
-        .on("end", function() {
-            console.log("Processing finished successfully");
-            const fileContent = fs.readFileSync(OutputFile);
-            var params = {
-              Bucket: this.BUCKET,
-              Key: fileName,
-              Body: fileContent        //got buffer by reading file path
-            };
-            this.S3.putObject(params, function(err, data) {
-              console.log(err, data);
-            });
-          })
-          .run();
-        return true;
-  
-    }catch(ex){
-        console.log("Exception in Business FFMPEG",ex);
-        return false;
-    }
-  
-  }
+   
 }

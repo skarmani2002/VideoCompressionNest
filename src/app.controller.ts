@@ -14,4 +14,9 @@ export class AppController {
   videoCompression(@Body() body:any) {
     return  this.appService.videoCompression(body);
   }
+
+  @Post('testing')
+  testing(@Body() body:any) {
+   // return  this.appService.testingVideo(body);
+  }
 }
